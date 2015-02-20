@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/awslabs/aws-sdk-go/aws"
+	"github.com/awslabs/aws-sdk-go/gen/autoscaling"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
-	"github.com/mitchellh/goamz/autoscaling"
 )
 
 func TestAccAWSAutoScalingGroup_basic(t *testing.T) {
@@ -54,7 +55,7 @@ func TestAccAWSAutoScalingGroup_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"aws_autoscaling_group.bar", "desired_capacity", "5"),
 					resource.TestCheckResourceAttrPtr(
-						"aws_autoscaling_group.bar", "launch_configuration", &lc.Name),
+						"aws_autoscaling_group.bar", "launch_configuration", lc.LaunchConfigurationName),
 				),
 			},
 		},
@@ -89,19 +90,19 @@ func testAccCheckAWSAutoScalingGroupDestroy(s *terraform.State) error {
 
 		// Try to find the Group
 		describeGroups, err := conn.DescribeAutoScalingGroups(
-			&autoscaling.DescribeAutoScalingGroups{
-				Names: []string{rs.Primary.ID},
+			&autoscaling.AutoScalingGroupNamesType{
+				AutoScalingGroupNames: []string{rs.Primary.ID},
 			})
 
 		if err == nil {
 			if len(describeGroups.AutoScalingGroups) != 0 &&
-				describeGroups.AutoScalingGroups[0].Name == rs.Primary.ID {
+				*describeGroups.AutoScalingGroups[0].AutoScalingGroupName == rs.Primary.ID {
 				return fmt.Errorf("AutoScaling Group still exists")
 			}
 		}
 
 		// Verify the error
-		ec2err, ok := err.(*autoscaling.Error)
+		ec2err, ok := err.(aws.APIError)
 		if !ok {
 			return err
 		}
@@ -119,32 +120,32 @@ func testAccCheckAWSAutoScalingGroupAttributes(group *autoscaling.AutoScalingGro
 			return fmt.Errorf("Bad availability_zones: %s", group.AvailabilityZones[0])
 		}
 
-		if group.Name != "foobar3-terraform-test" {
-			return fmt.Errorf("Bad name: %s", group.Name)
+		if *group.AutoScalingGroupName != "foobar3-terraform-test" {
+			return fmt.Errorf("Bad name: %s", *group.AutoScalingGroupName)
 		}
 
-		if group.MaxSize != 5 {
-			return fmt.Errorf("Bad max_size: %d", group.MaxSize)
+		if *group.MaxSize != 5 {
+			return fmt.Errorf("Bad max_size: %d", *group.MaxSize)
 		}
 
-		if group.MinSize != 2 {
-			return fmt.Errorf("Bad max_size: %d", group.MinSize)
+		if *group.MinSize != 2 {
+			return fmt.Errorf("Bad max_size: %d", *group.MinSize)
 		}
 
-		if group.HealthCheckType != "ELB" {
-			return fmt.Errorf("Bad health_check_type: %s", group.HealthCheckType)
+		if *group.HealthCheckType != "ELB" {
+			return fmt.Errorf("Bad health_check_type: %s", *group.HealthCheckType)
 		}
 
-		if group.HealthCheckGracePeriod != 300 {
-			return fmt.Errorf("Bad health_check_grace_period: %d", group.HealthCheckGracePeriod)
+		if *group.HealthCheckGracePeriod != 300 {
+			return fmt.Errorf("Bad health_check_grace_period: %d", *group.HealthCheckGracePeriod)
 		}
 
-		if group.DesiredCapacity != 4 {
-			return fmt.Errorf("Bad desired_capacity: %d", group.DesiredCapacity)
+		if *group.DesiredCapacity != 4 {
+			return fmt.Errorf("Bad desired_capacity: %d", *group.DesiredCapacity)
 		}
 
-		if group.LaunchConfigurationName == "" {
-			return fmt.Errorf("Bad launch configuration name: %s", group.LaunchConfigurationName)
+		if *group.LaunchConfigurationName == "" {
+			return fmt.Errorf("Bad launch configuration name: %s", *group.LaunchConfigurationName)
 		}
 
 		return nil
@@ -174,8 +175,8 @@ func testAccCheckAWSAutoScalingGroupExists(n string, group *autoscaling.AutoScal
 
 		conn := testAccProvider.Meta().(*AWSClient).autoscalingconn
 
-		describeOpts := autoscaling.DescribeAutoScalingGroups{
-			Names: []string{rs.Primary.ID},
+		describeOpts := autoscaling.AutoScalingGroupNamesType{
+			AutoScalingGroupNames: []string{rs.Primary.ID},
 		}
 		describeGroups, err := conn.DescribeAutoScalingGroups(&describeOpts)
 
@@ -184,7 +185,7 @@ func testAccCheckAWSAutoScalingGroupExists(n string, group *autoscaling.AutoScal
 		}
 
 		if len(describeGroups.AutoScalingGroups) != 1 ||
-			describeGroups.AutoScalingGroups[0].Name != rs.Primary.ID {
+			*describeGroups.AutoScalingGroups[0].AutoScalingGroupName != rs.Primary.ID {
 			return fmt.Errorf("AutoScaling Group not found")
 		}
 
