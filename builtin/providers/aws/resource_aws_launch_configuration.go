@@ -2,6 +2,7 @@ package aws
 
 import (
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -97,13 +98,24 @@ func resourceAwsLaunchConfigurationCreate(d *schema.ResourceData, meta interface
 
 	var createLaunchConfigurationOpts autoscaling.CreateLaunchConfigurationType
 	createLaunchConfigurationOpts.LaunchConfigurationName = aws.String(d.Get("name").(string))
-	createLaunchConfigurationOpts.IAMInstanceProfile = aws.String(d.Get("iam_instance_profile").(string))
 	createLaunchConfigurationOpts.ImageID = aws.String(d.Get("image_id").(string))
 	createLaunchConfigurationOpts.InstanceType = aws.String(d.Get("instance_type").(string))
-	createLaunchConfigurationOpts.KeyName = aws.String(d.Get("key_name").(string))
-	createLaunchConfigurationOpts.UserData = aws.String(d.Get("user_data").(string))
-	createLaunchConfigurationOpts.AssociatePublicIPAddress = aws.Boolean(d.Get("associate_public_ip_address").(bool))
-	createLaunchConfigurationOpts.SpotPrice = aws.String(d.Get("spot_price").(string))
+
+	if v, ok := d.GetOk("user_data"); ok {
+		createLaunchConfigurationOpts.UserData = aws.String(base64.StdEncoding.EncodeToString([]byte(v.(string))))
+	}
+	if v, ok := d.GetOk("associate_public_ip_address"); ok {
+		createLaunchConfigurationOpts.AssociatePublicIPAddress = aws.Boolean(v.(bool))
+	}
+	if v, ok := d.GetOk("iam_instance_profile"); ok {
+		createLaunchConfigurationOpts.IAMInstanceProfile = aws.String(v.(string))
+	}
+	if v, ok := d.GetOk("key_name"); ok {
+		createLaunchConfigurationOpts.KeyName = aws.String(v.(string))
+	}
+	if v, ok := d.GetOk("spot_price"); ok {
+		createLaunchConfigurationOpts.SpotPrice = aws.String(v.(string))
+	}
 
 	if v, ok := d.GetOk("security_groups"); ok {
 		createLaunchConfigurationOpts.SecurityGroups = expandStringList(
@@ -144,7 +156,7 @@ func resourceAwsLaunchConfigurationRead(d *schema.ResourceData, meta interface{}
 	}
 
 	// Verify AWS returned our launch configuration
-	if describConfs.LaunchConfigurations[0].LaunchConfigurationName != aws.String(d.Id()) {
+	if *describConfs.LaunchConfigurations[0].LaunchConfigurationName != d.Id() {
 		return fmt.Errorf(
 			"Unable to find launch configuration: %#v",
 			describConfs.LaunchConfigurations)
@@ -152,13 +164,39 @@ func resourceAwsLaunchConfigurationRead(d *schema.ResourceData, meta interface{}
 
 	lc := describConfs.LaunchConfigurations[0]
 
+	log.Printf("\n=====================\n")
+	log.Printf("describe:\n\n%#v", lc)
+	log.Printf("\n=====================\n")
+	if lc.IAMInstanceProfile != nil {
+		log.Printf("\nOK")
+	} else {
+		log.Printf("\nNOT OK\n\n")
+	}
+
+	// null pointer thing here!
+
 	d.Set("key_name", *lc.KeyName)
-	d.Set("iam_instance_profile", *lc.IAMInstanceProfile)
 	d.Set("image_id", *lc.ImageID)
 	d.Set("instance_type", *lc.InstanceType)
 	d.Set("name", *lc.LaunchConfigurationName)
-	d.Set("security_groups", lc.SecurityGroups)
-	d.Set("spot_price", *lc.SpotPrice)
+
+	if lc.IAMInstanceProfile != nil {
+		log.Printf("\nSetting profile\n\n")
+		d.Set("iam_instance_profile", *lc.IAMInstanceProfile)
+	} else {
+		log.Printf("\nNOT Setting profile\n\n")
+	}
+	if lc.SpotPrice != nil {
+		d.Set("spot_price", *lc.SpotPrice)
+	} else {
+		log.Printf("\nNOT Setting PRofil\n\n")
+	}
+	if lc.SecurityGroups != nil {
+		d.Set("security_groups", lc.SecurityGroups)
+	} else {
+		log.Printf("\nNOT SEC\n\n")
+	}
+	log.Printf("\n\n+++++++++ returning")
 
 	return nil
 }
