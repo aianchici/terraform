@@ -181,22 +181,14 @@ func resourceAwsLaunchConfigurationRead(d *schema.ResourceData, meta interface{}
 	d.Set("name", *lc.LaunchConfigurationName)
 
 	if lc.IAMInstanceProfile != nil {
-		log.Printf("\nSetting profile\n\n")
 		d.Set("iam_instance_profile", *lc.IAMInstanceProfile)
-	} else {
-		log.Printf("\nNOT Setting profile\n\n")
 	}
 	if lc.SpotPrice != nil {
 		d.Set("spot_price", *lc.SpotPrice)
-	} else {
-		log.Printf("\nNOT Setting PRofil\n\n")
 	}
 	if lc.SecurityGroups != nil {
 		d.Set("security_groups", lc.SecurityGroups)
-	} else {
-		log.Printf("\nNOT SEC\n\n")
 	}
-	log.Printf("\n\n+++++++++ returning")
 
 	return nil
 }
