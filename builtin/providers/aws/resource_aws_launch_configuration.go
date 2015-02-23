@@ -171,14 +171,21 @@ func resourceAwsLaunchConfigurationRead(d *schema.ResourceData, meta interface{}
 
 	if lc.IAMInstanceProfile != nil {
 		d.Set("iam_instance_profile", *lc.IAMInstanceProfile)
-	}
-	if lc.SpotPrice != nil {
-		d.Set("spot_price", *lc.SpotPrice)
-	}
-	if lc.SecurityGroups != nil {
-		d.Set("security_groups", lc.SecurityGroups)
+	} else {
+		d.Set("iam_instance_profile", nil)
 	}
 
+	if lc.SpotPrice != nil {
+		d.Set("spot_price", *lc.SpotPrice)
+	} else {
+		d.Set("spot_price", nil)
+	}
+
+	if lc.SecurityGroups != nil {
+		d.Set("security_groups", lc.SecurityGroups)
+	} else {
+		d.Set("security_groups", nil)
+	}
 	return nil
 }
 
