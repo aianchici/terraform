@@ -164,17 +164,6 @@ func resourceAwsLaunchConfigurationRead(d *schema.ResourceData, meta interface{}
 
 	lc := describConfs.LaunchConfigurations[0]
 
-	log.Printf("\n=====================\n")
-	log.Printf("describe:\n\n%#v", lc)
-	log.Printf("\n=====================\n")
-	if lc.IAMInstanceProfile != nil {
-		log.Printf("\nOK")
-	} else {
-		log.Printf("\nNOT OK\n\n")
-	}
-
-	// null pointer thing here!
-
 	d.Set("key_name", *lc.KeyName)
 	d.Set("image_id", *lc.ImageID)
 	d.Set("instance_type", *lc.InstanceType)
