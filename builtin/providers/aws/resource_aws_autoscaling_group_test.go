@@ -52,8 +52,7 @@ func TestAccAWSAutoScalingGroup_basic(t *testing.T) {
 					testAccCheckAWSLaunchConfigurationExists("aws_launch_configuration.new", &lc),
 					resource.TestCheckResourceAttr(
 						"aws_autoscaling_group.bar", "desired_capacity", "5"),
-					// resource.TestCheckResourceAttrPtr(
-					// 	"aws_autoscaling_group.bar", "launch_configuration", lc.LaunchConfigurationName),
+					testLaunchConfigurationNamePrefix("aws_autoscaling_group.bar", &lc),
 				),
 			},
 		},
@@ -188,6 +187,21 @@ func testAccCheckAWSAutoScalingGroupExists(n string, group *autoscaling.AutoScal
 		}
 
 		*group = describeGroups.AutoScalingGroups[0]
+
+		return nil
+	}
+}
+
+func testLaunchConfigurationNamePrefix(n string, lc *autoscaling.LaunchConfiguration) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		if *lc.LaunchConfigurationName != rs.Primary.Attributes["launch_configuration"] {
+			return fmt.Errorf("Launch configuration names do not match")
+		}
 
 		return nil
 	}
